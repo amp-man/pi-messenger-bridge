@@ -32,34 +32,44 @@ export class TelegramProvider implements ITransportProvider {
     // Escape special Telegram characters first (except those used in markdown)
     // Special chars that need escaping: _ * [ ] ( ) ~ ` > # + - = | { } . !
     // But we'll handle markdown-specific ones carefully
-    
     // Step 1: Protect code blocks and inline code from conversion
     const codeBlocks: string[] = [];
     const inlineCodes: string[] = [];
-    
     // Extract and protect code blocks
     text = text.replace(/```([\s\S]*?)```/g, (match, code) => {
       codeBlocks.push(match);
       return `__CODEBLOCK_${codeBlocks.length - 1}__`;
     });
-    
     // Extract and protect inline code
     text = text.replace(/`([^`]+)`/g, (match, code) => {
       inlineCodes.push(match);
       return `__INLINECODE_${inlineCodes.length - 1}__`;
     });
-    
     // Step 2: Convert **bold** to *bold* (Telegram format)
     text = text.replace(/\*\*([^*]+?)\*\*/g, '*$1*');
-    
     // Step 3: Convert *italic* to _italic_ (Telegram format)
     // But only single * not followed by another *
     text = text.replace(/(?<!\*)\*(?!\*)([^*]+?)(?<!\*)\*(?!\*)/g, '_$1_');
-    
     // Step 4: Restore code blocks and inline code
     text = text.replace(/__CODEBLOCK_(\d+)__/g, (_, idx) => codeBlocks[parseInt(idx)]);
     text = text.replace(/__INLINECODE_(\d+)__/g, (_, idx) => inlineCodes[parseInt(idx)]);
-    
+    return text;
+  }
+
+  /**
+   * Strip all Markdown formatting to produce plain text.
+   * Used as a fallback when Telegram rejects Markdown-formatted messages.
+   */
+  private stripMarkdown(text: string): string {
+    // Remove code block markers but keep the code content
+    text = text.replace(/```[\w]*\n?/g, '');
+    // Remove bold markers **text** or *text*
+    text = text.replace(/\*\*([^*]+?)\*\*/g, '$1');
+    text = text.replace(/(?<!\*)\*(?!\*)([^*]+?)(?<!\*)\*(?!\*)/g, '$1');
+    // Remove italic markers _text_
+    text = text.replace(/(?<!_)_(?!_)([^_]+?)(?<!_)_(?!_)/g, '$1');
+    // Remove inline code markers but keep content
+    text = text.replace(/`([^`]+)`/g, '$1');
     return text;
   }
 
@@ -108,7 +118,18 @@ export class TelegramProvider implements ITransportProvider {
       throw new Error("Telegram bot not connected");
     }
     const formattedText = this.formatForTelegram(text);
-    await this.bot.sendMessage(chatId, formattedText, { parse_mode: "Markdown" });
+    try {
+      await this.bot.sendMessage(chatId, formattedText, { parse_mode: "Markdown" });
+    } catch (err: any) {
+      // If Telegram rejects our Markdown (unmatched formatting chars, etc.),
+      // fall back to sending as plain text so the message is still delivered.
+      if (err?.response?.statusCode === 400 && err?.response?.body?.description?.includes("can't parse entities")) {
+        const plainText = this.stripMarkdown(text);
+        await this.bot.sendMessage(chatId, plainText);
+      } else {
+        throw err;
+      }
+    }
   }
 
   async sendTyping(chatId: string): Promise<void> {
@@ -158,9 +179,7 @@ export class TelegramProvider implements ITransportProvider {
 
     // Check authorization (with sendMessage callback for challenge notifications)
     const sendMessageToUser = async (cId: string, text: string) => {
-      if (this.bot) {
-        await this.bot.sendMessage(cId, text, { parse_mode: "Markdown" });
-      }
+      await this.sendMessage(cId, text);
     };
     
     const isAuthorized = await this.auth.checkAuthorization(
