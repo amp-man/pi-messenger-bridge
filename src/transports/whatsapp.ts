@@ -53,8 +53,12 @@ export class WhatsAppProvider implements ITransportProvider {
         this.onDisplay(message);
         return;
       }
-
       console.log(message);
+    };
+    const displayDebug = (message: string): void => {
+      if (this.debug) {
+        display(message);
+      }
     };
 
     // Ensure auth directory exists
@@ -131,7 +135,7 @@ export class WhatsAppProvider implements ITransportProvider {
             if (fs.existsSync(this.authPath)) {
               fs.rmSync(this.authPath, { recursive: true, force: true });
               if (this.isManualConnect) {
-                display("🔄 WhatsApp session expired. Reconnecting with a fresh QR code...");
+                displayDebug("🔄 WhatsApp session expired. Reconnecting with a fresh QR code...");
                 // Reconnect after clearing auth to get fresh QR (manual configure only)
                 setTimeout(() => this.connect(true), 1000);
               } else {
@@ -149,7 +153,7 @@ export class WhatsAppProvider implements ITransportProvider {
         }
       } else if (connection === "open") {
         this._isConnected = true;
-        display("✅ WhatsApp connected!");
+        displayDebug("✅ WhatsApp connected!");
       }
     });
 
