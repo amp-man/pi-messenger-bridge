@@ -116,6 +116,7 @@ export default function (pi: ExtensionAPI): void {
             Promise.resolve().then(() => {
               const whatsappConfig = { ...config.whatsapp!, debug: config.debug };
               const whatsappProvider = new WhatsAppProvider(whatsappConfig, auth);
+              whatsappProvider.onDisplay = (msg) => ctx.ui.notify(msg, "info");
               transportManager.addTransport(whatsappProvider);
             })
           );
@@ -365,6 +366,7 @@ export default function (pi: ExtensionAPI): void {
             saveConfig(config);
             const whatsappConfig = { ...config.whatsapp, debug: config.debug };
             const whatsappProvider = new WhatsAppProvider(whatsappConfig, auth);
+            whatsappProvider.onDisplay = (msg) => ctx.ui.notify(msg, "info");
             transportManager.addTransport(whatsappProvider);
             if (acquireLock()) {
               try {

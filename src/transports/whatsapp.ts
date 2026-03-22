@@ -26,6 +26,7 @@ export class WhatsAppProvider implements ITransportProvider {
   private lastProcessedMessageId = "";
   private debug: boolean;
   private isManualConnect = false;
+  onDisplay?: (message: string) => void;
 
   constructor(config: { authPath?: string; debug?: boolean },
     private auth: ChallengeAuth
@@ -47,6 +48,15 @@ export class WhatsAppProvider implements ITransportProvider {
     if (this._isConnected) return;
     this.isManualConnect = manual;
 
+    const display = (message: string): void => {
+      if (this.onDisplay) {
+        this.onDisplay(message);
+        return;
+      }
+
+      console.log(message);
+    };
+
     // Ensure auth directory exists
     if (!fs.existsSync(this.authPath)) {
       fs.mkdirSync(this.authPath, { recursive: true, mode: 0o700 });
@@ -55,7 +65,7 @@ export class WhatsAppProvider implements ITransportProvider {
       try {
         fs.chmodSync(this.authPath, 0o700);
       } catch (err) {
-        console.warn("Failed to set auth directory permissions:", err);
+        display(`⚠️ Failed to set auth directory permissions: ${(err as Error).message}`);
       }
     }
 
@@ -96,9 +106,9 @@ export class WhatsAppProvider implements ITransportProvider {
       }
 
       if (qr && this.isManualConnect) {
-        console.log("\n📱 Scan this QR code with WhatsApp to authenticate:\n");
-        qrcode.generate(qr, { small: true });
-        console.log("\n");
+        qrcode.generate(qr, { small: true }, (qrString: string) => {
+          display(`📱 Scan this WhatsApp QR code:\n${qrString}`);
+        });
       }
 
       if (connection === "close") {
@@ -121,15 +131,15 @@ export class WhatsAppProvider implements ITransportProvider {
             if (fs.existsSync(this.authPath)) {
               fs.rmSync(this.authPath, { recursive: true, force: true });
               if (this.isManualConnect) {
-                console.log("🔄 WhatsApp session expired. Cleared credentials. Reconnecting with QR code...");
+                display("🔄 WhatsApp session expired. Reconnecting with a fresh QR code...");
                 // Reconnect after clearing auth to get fresh QR (manual configure only)
                 setTimeout(() => this.connect(true), 1000);
               } else {
-                console.log("🔄 WhatsApp session expired. Cleared credentials. Run /msg-bridge configure whatsapp to reconnect.");
+                display("🔄 WhatsApp session expired. Run /msg-bridge configure whatsapp to reconnect.");
               }
             }
           } catch (err) {
-            console.error("Failed to clear auth:", err);
+            display(`❌ Failed to clear auth: ${(err as Error).message}`);
           }
         } else if (shouldReconnect) {
           // Reconnect after 3 seconds
@@ -139,7 +149,7 @@ export class WhatsAppProvider implements ITransportProvider {
         }
       } else if (connection === "open") {
         this._isConnected = true;
-        console.log("✅ WhatsApp connected!");
+        display("✅ WhatsApp connected!");
       }
     });
 
@@ -164,7 +174,6 @@ export class WhatsAppProvider implements ITransportProvider {
     this.socket.end(undefined);
     this.socket = null;
     this._isConnected = false;
-    console.log("[WhatsApp] Disconnected");
   }
 
   async sendMessage(chatId: string, text: string): Promise<void> {
@@ -189,7 +198,6 @@ export class WhatsAppProvider implements ITransportProvider {
         }
       }, 3000);
     } catch (error) {
-      console.warn("[WhatsApp] Failed to send typing:", error);
     }
   }
 
