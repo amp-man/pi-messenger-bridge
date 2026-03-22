@@ -268,6 +268,7 @@ export default function (pi: ExtensionAPI): void {
             Promise.resolve().then(() => {
               const whatsappConfig = { ...config.whatsapp!, debug: config.debug };
               const whatsappProvider = new WhatsAppProvider(whatsappConfig, auth);
+              whatsappProvider.onDisplay = (msg) => ctx.ui.notify(msg, "info");
               transportManager.addTransport(whatsappProvider);
             })
           );
@@ -494,10 +495,11 @@ export default function (pi: ExtensionAPI): void {
             saveConfig(config);
             const whatsappConfig = { ...config.whatsapp, debug: config.debug };
             const whatsappProvider = new WhatsAppProvider(whatsappConfig, auth);
+            whatsappProvider.onDisplay = (msg) => ctx.ui.notify(msg, "info");
             transportManager.addTransport(whatsappProvider);
             try {
               await whatsappProvider.connect(true); // manual = true for configure command
-              context.ui.notify("✅ WhatsApp configured and connecting (scan QR code in terminal)...", "info");
+              context.ui.notify("✅ WhatsApp configured and connecting...", "info");
             } catch (err) {
               context.ui.notify(`⚠️ WhatsApp setup error: ${(err as Error).message}`, "error");
             }
