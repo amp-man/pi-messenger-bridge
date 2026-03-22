@@ -327,6 +327,34 @@ export default function (pi: ExtensionAPI): void {
         messageId: msg.messageId,
       };
 
+      // Auto-capture contact details for proactive messaging
+      try {
+        const configPath = path.join(os.homedir(), ".pi", "msg-bridge.json");
+        const config: MsgBridgeConfig = fs.existsSync(configPath)
+          ? JSON.parse(fs.readFileSync(configPath, "utf-8"))
+          : {};
+        const knownContacts = config.knownContacts ?? [];
+        const existingContact = knownContacts.find(
+          (contact) => contact.transport === msg.transport && contact.chatId === msg.chatId
+        );
+        const now = Date.now();
+        if (existingContact) {
+          existingContact.username = msg.username;
+          existingContact.lastSeen = now;
+        } else {
+          knownContacts.push({
+            transport: msg.transport,
+            chatId: msg.chatId,
+            username: msg.username,
+            lastSeen: now,
+          });
+        }
+        config.knownContacts = knownContacts;
+        saveConfig(config);
+      } catch (err) {
+        console.error("Failed to update known contacts:", err);
+      }
+
       // Inject message into pi as a user message (triggers agent turn)
       const taggedMessage = `📱 **@${msg.username} via ${msg.transport}**: ${msg.content}`;
       pi.sendUserMessage(taggedMessage);
