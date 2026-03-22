@@ -1,5 +1,6 @@
 import type { AssistantMessage } from "@mariozechner/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import { Type } from "@sinclair/typebox";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -646,6 +647,87 @@ export default function (pi: ExtensionAPI): void {
         context.ui.notify(`Unknown subcommand: ${subcommand}. Run /msg-bridge help`, "warning");
         break;
     }
+    },
+  });
+
+  pi.registerTool({
+    name: "send_remote_message",
+    label: "Send Remote Message",
+    description:
+      "Send a proactive message to a saved messenger destination. Use /msg-bridge destinations to see available aliases.",
+    parameters: Type.Object({
+      alias: Type.String({ description: "Saved destination alias" }),
+      text: Type.String({ description: "Message text to send" }),
+    }),
+    async execute(_toolCallId, params) {
+      const config = loadConfig();
+      const alias = params.alias.trim();
+      const destination = config.destinations?.[alias];
+      const availableAliases = Object.keys(config.destinations ?? {}).sort();
+
+      if (!destination) {
+        const aliasList =
+          availableAliases.length > 0
+            ? availableAliases.join(", ")
+            : "(none configured)";
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Destination alias '${alias}' not found. Available aliases: ${aliasList}`,
+            },
+          ],
+          details: {},
+          isError: true,
+        };
+      }
+
+      const messageText = params.text;
+      if (!messageText.trim()) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "❌ Message text cannot be empty.",
+            },
+          ],
+          details: {},
+          isError: true,
+        };
+      }
+
+      try {
+        const chunks = splitMessage(messageText, 4000);
+        for (const chunk of chunks) {
+          await transportManager.sendMessage(
+            destination.chatId,
+            destination.transport,
+            chunk
+          );
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `✅ Sent message to '${destination.alias}' via ${destination.transport}.`,
+            },
+          ],
+          details: {},
+        };
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to send message to '${destination.alias}': ${(err as Error).message}`,
+            },
+          ],
+          details: {},
+          isError: true,
+        };
+      }
     },
   });
 }
