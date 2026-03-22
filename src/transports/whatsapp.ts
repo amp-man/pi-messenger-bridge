@@ -61,7 +61,14 @@ export class WhatsAppProvider implements ITransportProvider {
 
     const baileys = await loadBaileys();
     const { state, saveCreds } = await baileys.useMultiFileAuthState(this.authPath);
-
+    // Fetch latest WA Web version to avoid 405 "Method Not Allowed" from stale bundled version
+    let waWebVersion: [number, number, number] | undefined;
+    try {
+      const { version } = await baileys.fetchLatestWaWebVersion({});
+      waWebVersion = version;
+    } catch (err) {
+      // Fall back to bundled default if fetch fails
+    }
     // Suppress Baileys logger unless debug mode
     const silentLogger: any = {
       level: 'silent' as const,
@@ -73,9 +80,9 @@ export class WhatsAppProvider implements ITransportProvider {
       error: () => {},
       fatal: () => {},
     };
-
     this.socket = baileys.default({
       auth: state,
+      ...(waWebVersion ? { version: waWebVersion } : {}),
       printQRInTerminal: false, // We'll handle QR display ourselves
       logger: this.debug ? undefined : silentLogger,
     });
