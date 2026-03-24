@@ -13,7 +13,7 @@ import { TransportManager } from "./transports/manager.js";
 import { SlackProvider } from "./transports/slack.js";
 import { TelegramProvider } from "./transports/telegram.js";
 import { WhatsAppProvider } from "./transports/whatsapp.js";
-import type { PendingRemoteChat, TransportStatus } from "./types.js";
+import type { MsgBridgeConfig, PendingRemoteChat, TransportStatus } from "./types.js";
 import { openMainMenu } from "./ui/main-menu.js";
 import { createStatusWidget } from "./ui/status-widget.js";
 
@@ -184,7 +184,7 @@ export default function (pi: ExtensionAPI): void {
           : {};
         const knownContacts = config.knownContacts ?? [];
         const existingContact = knownContacts.find(
-          (contact) => contact.transport === msg.transport && contact.chatId === msg.chatId
+          (contact: any) => contact.transport === msg.transport && contact.chatId === msg.chatId
         );
         const now = Date.now();
         if (existingContact) {
@@ -206,7 +206,7 @@ export default function (pi: ExtensionAPI): void {
 
       // Inject message into pi as a user message (triggers agent turn)
       const taggedMessage = `📱 **@${msg.username} via ${msg.transport}**: ${msg.content}`;
-      pi.sendUserMessage(taggedMessage);
+      pi.sendUserMessage(taggedMessage, { deliverAs: "steer" });
     });
 
     transportManager.onError((err, transport) => {
@@ -483,6 +483,7 @@ export default function (pi: ExtensionAPI): void {
       case "add-destination": {
         const alias = parts[1];
         const destinationInput = parts.slice(2).join(" ").trim();
+        if (!alias || !destinationInput) {
           context.ui.notify("Usage: /msg-bridge add-destination <alias> <transport:chatId|username>", "error");
           return;
         }
@@ -490,13 +491,14 @@ export default function (pi: ExtensionAPI): void {
           context.ui.notify("❌ Alias must use only letters, numbers, underscores, or hyphens", "error");
           return;
         }
-
         const configForDestination = loadConfig();
         let transport: string;
         let chatId: string;
+        if (destinationInput.includes(":")) {
           const separatorIndex = destinationInput.indexOf(":");
           transport = destinationInput.substring(0, separatorIndex).trim();
           chatId = destinationInput.substring(separatorIndex + 1).trim();
+          if (!transport || !chatId) {
             context.ui.notify("❌ Destination must be in format <transport:chatId>", "error");
             return;
           }
@@ -605,7 +607,7 @@ export default function (pi: ExtensionAPI): void {
         context.ui.notify(`🗑️ Removed destination '${alias}'`, "info");
         break;
       }
-      case "widget":
+      case "widget": {
         const cfg2 = loadConfig();
         cfg2.showWidget = cfg2.showWidget === false;
         saveConfig(cfg2);
@@ -614,7 +616,6 @@ export default function (pi: ExtensionAPI): void {
         updateWidget();
         break;
       }
-
       case "status": {
         const stats = auth.getStats();
         const status = transportManager.getStatus();

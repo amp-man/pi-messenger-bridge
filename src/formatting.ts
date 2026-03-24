@@ -18,8 +18,15 @@ export function hasToolCalls(message: AssistantMessage): boolean {
 /**
  * Format tool call summaries for the remote user.
  */
-export function formatToolCalls(message: AssistantMessage): string {
-  const toolCalls = message.content.filter((part) => part.type === "toolCall");
+export function formatToolCalls(message: AssistantMessage, hiddenRecipient?: { chatId: string; transport: string } | null): string {
+  let toolCalls = message.content.filter((part) => part.type === "toolCall");
+  // Hide send_remote_message calls targeting the current recipient
+  if (hiddenRecipient) {
+    toolCalls = toolCalls.filter((tc: any) => {
+      if (tc.name === "send_remote_message") return false;
+      return true;
+    });
+  }
   if (toolCalls.length === 0) return "";
   return toolCalls
     .map((tc: any) => {
