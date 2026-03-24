@@ -28,6 +28,7 @@ export default function (pi: ExtensionAPI): void {
   let ctx: ExtensionContext;
 
   /**
+  /**
    * Update status widget
    */
   function updateWidget(): void {
@@ -240,7 +241,7 @@ export default function (pi: ExtensionAPI): void {
     try {
       const message = event.message as AssistantMessage;
       const responseText = extractTextFromMessage(message);
-      const toolCallsText = formatToolCalls(message);
+      const toolCallsText = formatToolCalls(message, pendingRemoteChat);
       const hasPendingTools = hasToolCalls(message);
 
       const parts: string[] = [];
