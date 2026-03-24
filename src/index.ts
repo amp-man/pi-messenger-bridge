@@ -108,24 +108,43 @@ export default function (pi: ExtensionAPI): void {
   /**
    * Format tool call summaries for the remote user
    */
-  function formatToolCalls(message: AssistantMessage): string {
+  function formatToolCalls(
+    message: AssistantMessage,
+    pendingRemoteChat: PendingRemoteChat | null
+  ): string {
+    const config = loadConfig();
     const toolCalls = message.content.filter((part) => part.type === "toolCall");
     if (toolCalls.length === 0) return "";
     return toolCalls
       .map((tc: any) => {
+        if (tc.name === "send_remote_message") {
+          const alias =
+            typeof tc.arguments?.alias === "string"
+              ? tc.arguments.alias.trim()
+              : undefined;
+          if (alias) {
+            const destination = config.destinations?.[alias];
+            if (
+              destination &&
+              destination.chatId === pendingRemoteChat?.chatId &&
+              destination.transport === pendingRemoteChat?.transport
+            ) {
+              return null;
+            }
+          }
+        }
         const name = tc.name || "tool";
         const args = tc.arguments || {};
-        
         // Format arguments as key=value pairs
         const argPairs = Object.entries(args)
           .map(([k, v]) => {
-            const valStr = typeof v === 'string' ? v : JSON.stringify(v);
+            const valStr = typeof v === "string" ? v : JSON.stringify(v);
             return `${k}=${truncate(valStr, 50)}`;
           })
           .join(", ");
-        
         return argPairs ? `🔧 ${name} (${argPairs})` : `🔧 ${name}`;
       })
+      .filter((toolCallText): toolCallText is string => toolCallText !== null)
       .join("\n");
   }
 
@@ -394,7 +413,7 @@ export default function (pi: ExtensionAPI): void {
     try {
       const message = event.message as AssistantMessage;
       const responseText = extractTextFromMessage(message);
-      const toolCallsText = formatToolCalls(message);
+      const toolCallsText = formatToolCalls(message, pendingRemoteChat);
       const hasPendingTools = hasToolCalls(message);
 
       // Build full reply: text + tool call indicators
