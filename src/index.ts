@@ -358,7 +358,7 @@ export default function (pi: ExtensionAPI): void {
 
       // Inject message into pi as a user message (triggers agent turn)
       const taggedMessage = `📱 **@${msg.username} via ${msg.transport}**: ${msg.content}`;
-      pi.sendUserMessage(taggedMessage);
+      pi.sendUserMessage(taggedMessage, { deliverAs: "steer" });
     });
 
     // Handle transport errors
