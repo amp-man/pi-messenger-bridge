@@ -193,10 +193,8 @@ export class SlackProvider implements ITransportProvider {
     try {
       await this.app.start();
       this._isConnected = true;
-      console.log("✅ Slack connected via Socket Mode!");
     } catch (error) {
-      console.error("[Slack] Failed to start:", error);
-      throw error;
+      throw new Error(`Slack connection failed: ${(error as Error).message}`);
     }
   }
 
@@ -226,8 +224,7 @@ export class SlackProvider implements ITransportProvider {
         text: text,
       });
     } catch (error) {
-      console.error("[Slack] Failed to send message:", error);
-      throw error;
+      throw new Error(`Slack send failed: ${(error as Error).message}`);
     }
   }
 

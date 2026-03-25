@@ -50,8 +50,7 @@ export class TransportManager {
   async connectAll(): Promise<void> {
     const connections = Array.from(this.transports.values()).map((t) =>
       t.connect().catch((err) => {
-        console.error(`Failed to connect ${t.type}:`, err);
-        throw err;
+        throw new Error(`${t.type} connection failed: ${(err as Error).message}`);
       })
     );
     await Promise.all(connections);

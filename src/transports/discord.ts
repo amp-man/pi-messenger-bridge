@@ -170,8 +170,7 @@ export class DiscordProvider implements ITransportProvider {
     try {
       await this.client.login(token);
     } catch (error) {
-      console.error("[Discord] Failed to login:", error);
-      throw error;
+      throw new Error(`Discord login failed: ${(error as Error).message}`);
     }
   }
 
@@ -203,8 +202,7 @@ export class DiscordProvider implements ITransportProvider {
         }
       }
     } catch (error) {
-      console.error("[Discord] Failed to send message:", error);
-      throw error;
+      throw new Error(`Discord send failed: ${(error as Error).message}`);
     }
   }
 

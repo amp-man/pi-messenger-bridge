@@ -13,6 +13,7 @@ import { SlackProvider } from "./transports/slack.js";
 import { TelegramProvider } from "./transports/telegram.js";
 import { WhatsAppProvider } from "./transports/whatsapp.js";
 import type { PendingRemoteChat, TransportStatus } from "./types.js";
+import { openMainMenu } from "./ui/main-menu.js";
 import { createStatusWidget } from "./ui/status-widget.js";
 
 /**
@@ -257,13 +258,25 @@ export default function (pi: ExtensionAPI): void {
     description: "Manage remote messenger connections (help|status|connect|disconnect|configure|widget)",
     handler: async (args: string, context) => {
       const parts = args.trim().split(/\s+/).filter(p => p.length > 0);
-      const subcommand = parts[0] || "help";
+      const subcommand = parts[0] || "";
+
+    // No subcommand → open interactive menu
+    if (!subcommand || subcommand === "menu") {
+      await openMainMenu({
+        ui: context.ui,
+        transportManager,
+        auth,
+        updateWidget,
+      });
+      return;
+    }
 
     switch (subcommand) {
       case "help": {
         const helpText = [
           "━━━ Message Bridge Commands ━━━",
           "",
+          "/msg-bridge                   Open interactive menu",
           "/msg-bridge help              Show this help",
           "/msg-bridge status            Show connection and user status",
           "/msg-bridge connect           Connect to all transports",
@@ -447,7 +460,7 @@ export default function (pi: ExtensionAPI): void {
           "",
           "Transports:",
           ...status.map(
-            (s) => `  ${s.connected ? "🟢" : "🔴"} ${s.type}`
+            (s) => `  ${s.connected ? "●" : "○"} ${s.type}`
           ),
           "",
           `Trusted Users: ${stats.trustedUsers}`,

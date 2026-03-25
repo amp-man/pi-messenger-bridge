@@ -10,16 +10,15 @@ https://github.com/user-attachments/assets/cd64360e-e8cd-4820-a67f-bd127c5d6035
 
 ## Features
 
-- 🔐 Challenge-based authentication (6-digit codes)
 - 📱 Multi-messenger support (Telegram, WhatsApp, Slack, Discord)
-- 🎯 Event-driven architecture (no polling loops)
-- 🔒 Trusted user management with transport-namespaced IDs
+- 🔐 Challenge-based authentication (6-digit codes)
+- 🎛️ Interactive menu (`/msg-bridge`) for setup and management
+- 🔒 Single-instance guard — prevents duplicate bot polling with sub-agents
 - 📊 Live status widget (toggleable)
 - 💾 Persistent config (auth state, auto-connect, widget preference)
 - 🔧 Tool call visibility for remote users
 - 📝 Multi-turn conversation support
 - 🔑 Secure permissions (chmod 600 for config files, 700 for directories)
-- 🐛 Debug mode for troubleshooting
 
 ## Setup
 
@@ -77,8 +76,10 @@ export PI_SLACK_APP_TOKEN="xapp-..."
 
 #### Discord
 
-Create a Discord bot in the [Developer Portal](https://discord.com/developers/applications).
-Enable "Message Content Intent" in Bot settings.
+1. Create a new application in the [Developer Portal](https://discord.com/developers/applications)
+2. Go to **Bot** → **Reset Token** → copy the token
+3. Enable **Message Content Intent** (under Privileged Gateway Intents on the same page)
+4. Go to **OAuth2 → URL Generator** → select scope `bot` → select permissions `Send Messages` and `Read Message History` → open the generated URL to invite the bot to your server
 
 ```bash
 /msg-bridge configure discord <bot-token>
@@ -104,12 +105,15 @@ The user enters the code in the bot chat to become a trusted user.
 
 ## Commands
 
-- `/msg-bridge` or `/msg-bridge help` — Show available commands
-- `/msg-bridge status` — Show connection and user status
-- `/msg-bridge connect` — Connect to configured messengers
-- `/msg-bridge disconnect` — Disconnect all transports
-- `/msg-bridge configure <platform> <token>` — Set transport credentials
-- `/msg-bridge widget` — Toggle status widget on/off
+| Command | Description |
+|---|---|
+| `/msg-bridge` | Open interactive menu (configure, connect, widget, help) |
+| `/msg-bridge status` | Show connection and user status |
+| `/msg-bridge connect` | Connect to all configured transports |
+| `/msg-bridge disconnect` | Disconnect all transports |
+| `/msg-bridge configure <platform> [token]` | Set transport credentials via CLI |
+| `/msg-bridge widget` | Toggle status widget on/off |
+| `/msg-bridge help` | Show command reference |
 
 ## Configuration
 
@@ -181,6 +185,7 @@ Single-instance connection guard prevents duplicate polling when sub-agents spaw
 npm install
 npm run build        # compile TypeScript
 npm run typecheck    # type-check without emitting
+npm run test         # run tests
 npm run lint         # biome lint
 npm run lint:fix     # biome lint with auto-fix
 ```
