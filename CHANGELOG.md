@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-03-25
 
 ### Added
+- Interactive menu (`/msg-bridge` with no args) — configure, connect, widget, help via `ui.select()`
 - Single-instance connection guard to prevent duplicate polling / 409 conflicts (fixes #2)
   - Layer 1: global flag for same-process re-entrant calls (sub-agents)
   - Layer 2: PID lock file (`~/.pi/msg-bridge.lock`) for cross-process duplicates
@@ -21,12 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Discord DM messages not received — added required `Partials.Channel` and `Partials.Message` to client options (fixes #5, thanks @chr15m)
+- Transport errors now show clean messages instead of full stack traces
 
 ### Changed
-- Extracted `config.ts`, `lock.ts`, `formatting.ts` from index.ts for better modularity
+- Extracted `config.ts`, `lock.ts`, `formatting.ts`, `ui/main-menu.ts` from index.ts
 - Moved `@mariozechner/pi-*` packages to peerDependencies
 - Updated devDependencies: typescript ^6.0.2, @types/node ^25.3.0, @biomejs/biome ^2.4.8, vitest ^4.1.1
 - `prepublishOnly` now runs lint and typecheck before build
+- Applied `npm audit fix` for transitive dependency vulnerabilities
 
 ## [0.2.1] - 2026-02-11
 
