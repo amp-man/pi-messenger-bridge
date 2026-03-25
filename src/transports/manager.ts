@@ -1,5 +1,5 @@
-import type { ITransportProvider } from "./interface.js";
 import type { ExternalMessage } from "../types.js";
+import type { ITransportProvider } from "./interface.js";
 
 /**
  * Manages multiple transport providers and routes messages
@@ -90,7 +90,7 @@ export class TransportManager {
    */
   async sendTyping(chatId: string, transportType: string): Promise<void> {
     const transport = this.transports.get(transportType);
-    if (transport && transport.isConnected) {
+    if (transport?.isConnected) {
       await transport.sendTyping(chatId);
     }
   }

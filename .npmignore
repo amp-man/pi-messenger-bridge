@@ -1,6 +1,28 @@
-src/
+# Development files
 tsconfig.json
+biome.json
 .vscode/
+.git/
+.gitignore
+
+# Documentation
 plan/
+media/*.mp4
+
+# Build artifacts
 *.log
+npm-debug.log*
+.DS_Store
+
+# Tests
+test/
+tests/
+*.test.ts
+*.spec.ts
+
+# Environment
 .env
+.pi
+.claude
+.vscode
+.github

@@ -182,7 +182,7 @@ export class ChallengeAuth {
           chatId,
           "🔐 Please enter the 6-digit code provided by the bot admin.\n⏱️ Expires in 2 minutes."
         );
-      } catch (err) {
+      } catch (_err) {
         // Ignore send errors
       }
     }
@@ -196,7 +196,7 @@ export class ChallengeAuth {
    */
   async handleAdminCommand(
     text: string,
-    chatId: string,
+    _chatId: string,
     userId: string,
     sendMessage: (text: string) => Promise<void>,
     transport?: string
@@ -247,14 +247,15 @@ export class ChallengeAuth {
         this.onNotify(`Channel ${parts[1]} disabled`, "info");
         return true;
 
-      case "/channels":
+      case "/channels": {
         const channels = Array.from(this.channelAuth.entries())
           .map(([id, auth]) => `• ${id}: ${auth.enabled ? "✅" : "❌"} (${auth.mode})`)
           .join("\n");
         await sendMessage(channels || "No channels configured");
         return true;
+      }
 
-      case "/trusted":
+      case "/trusted": {
         const trusted = Array.from(this.trustedUsers)
           .map(id => {
             const [transport, uid] = id.split(':');
@@ -263,8 +264,9 @@ export class ChallengeAuth {
           .join(", ");
         await sendMessage(`Trusted users (${this.trustedUsers.size}):\n${trusted || "None"}`);
         return true;
+      }
 
-      case "/revoke":
+      case "/revoke": {
         if (parts.length < 2) {
           await sendMessage("Usage: /revoke <userId> or /revoke <transport:userId>");
           return true;
@@ -296,6 +298,7 @@ export class ChallengeAuth {
           await sendMessage(`❌ User ${revokeId} not found in trusted users`);
         }
         return true;
+      }
 
       default:
         return false;

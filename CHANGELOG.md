@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-25
+
+### Added
+- Single-instance connection guard to prevent duplicate polling / 409 conflicts
+  - Layer 1: global flag for same-process re-entrant calls (sub-agents)
+  - Layer 2: PID lock file (`~/.pi/msg-bridge.lock`) for cross-process duplicates
+- Session shutdown handler — releases lock and disconnects transports on exit
+- Lock check on `/msg-bridge configure` connect calls to prevent bypassing the guard
+- CI workflow (GitHub Actions: lint + typecheck)
+- Biome linter configuration
+
+### Changed
+- Moved `@mariozechner/pi-*` packages to peerDependencies
+- Updated devDependencies: typescript ^6.0.2, @types/node ^25.3.0, @biomejs/biome ^2.4.8
+- `prepublishOnly` now runs lint and typecheck before build
+
 ## [0.2.1] - 2026-02-11
 
 ### Changed

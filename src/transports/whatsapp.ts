@@ -1,9 +1,9 @@
-import type { ITransportProvider } from "./interface.js";
-import type { ExternalMessage } from "../types.js";
-import type { ChallengeAuth } from "../auth/challenge-auth.js";
-import * as qrcode from "qrcode-terminal";
 import * as fs from "fs";
 import * as path from "path";
+import * as qrcode from "qrcode-terminal";
+import type { ChallengeAuth } from "../auth/challenge-auth.js";
+import type { ExternalMessage } from "../types.js";
+import type { ITransportProvider } from "./interface.js";
 
 // Dynamic import for ESM modules
 type WASocket = any;
@@ -27,8 +27,7 @@ export class WhatsAppProvider implements ITransportProvider {
   private debug: boolean;
   private isManualConnect = false;
 
-  constructor(
-    private config: { authPath?: string; debug?: boolean },
+  constructor(config: { authPath?: string; debug?: boolean },
     private auth: ChallengeAuth
   ) {
     // Default auth path to ~/.pi/msg-bridge-whatsapp-auth

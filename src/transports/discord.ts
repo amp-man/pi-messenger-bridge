@@ -1,6 +1,6 @@
-import type { ITransportProvider } from "./interface.js";
-import type { ExternalMessage } from "../types.js";
 import type { ChallengeAuth } from "../auth/challenge-auth.js";
+import type { ExternalMessage } from "../types.js";
+import type { ITransportProvider } from "./interface.js";
 
 // Dynamic import for ESM modules
 type Client = any;

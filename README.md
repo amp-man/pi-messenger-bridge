@@ -172,6 +172,19 @@ export MSG_BRIDGE_DEBUG=true
 Uses pi's native `sendUserMessage()` and `turn_end` events for two-way communication.
 No tool-loop hacks needed — this is the pi-native way.
 
+Single-instance connection guard prevents duplicate polling when sub-agents spawn
+(global flag + PID lock file at `~/.pi/msg-bridge.lock`).
+
+## Development
+
+```bash
+npm install
+npm run build        # compile TypeScript
+npm run typecheck    # type-check without emitting
+npm run lint         # biome lint
+npm run lint:fix     # biome lint with auto-fix
+```
+
 ## License
 
 MIT

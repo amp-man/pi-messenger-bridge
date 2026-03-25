@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
-import type { ITransportProvider } from "./interface.js";
-import type { ExternalMessage } from "../types.js";
 import type { ChallengeAuth } from "../auth/challenge-auth.js";
+import type { ExternalMessage } from "../types.js";
+import type { ITransportProvider } from "./interface.js";
 
 /**
  * Telegram transport provider using node-telegram-bot-api
@@ -38,13 +38,13 @@ export class TelegramProvider implements ITransportProvider {
     const inlineCodes: string[] = [];
     
     // Extract and protect code blocks
-    text = text.replace(/```([\s\S]*?)```/g, (match, code) => {
+    text = text.replace(/```([\s\S]*?)```/g, (match, _code) => {
       codeBlocks.push(match);
       return `__CODEBLOCK_${codeBlocks.length - 1}__`;
     });
     
     // Extract and protect inline code
-    text = text.replace(/`([^`]+)`/g, (match, code) => {
+    text = text.replace(/`([^`]+)`/g, (match, _code) => {
       inlineCodes.push(match);
       return `__INLINECODE_${inlineCodes.length - 1}__`;
     });
@@ -57,8 +57,8 @@ export class TelegramProvider implements ITransportProvider {
     text = text.replace(/(?<!\*)\*(?!\*)([^*]+?)(?<!\*)\*(?!\*)/g, '_$1_');
     
     // Step 4: Restore code blocks and inline code
-    text = text.replace(/__CODEBLOCK_(\d+)__/g, (_, idx) => codeBlocks[parseInt(idx)]);
-    text = text.replace(/__INLINECODE_(\d+)__/g, (_, idx) => inlineCodes[parseInt(idx)]);
+    text = text.replace(/__CODEBLOCK_(\d+)__/g, (_, idx) => codeBlocks[parseInt(idx, 10)]);
+    text = text.replace(/__INLINECODE_(\d+)__/g, (_, idx) => inlineCodes[parseInt(idx, 10)]);
     
     return text;
   }
