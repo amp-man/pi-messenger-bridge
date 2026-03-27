@@ -299,7 +299,7 @@ export default function (pi: ExtensionAPI): void {
    * /msg-bridge command - show status or manage connections
    */
   pi.registerCommand("msg-bridge", {
-    description: "Manage remote messenger connections and destinations (help|status|connect|disconnect|configure|widget|add-destination|destinations|remove-destination)",
+    description: "Manage remote messenger connections (help|status|connect|disconnect|configure|widget|alias|unalias)",
     handler: async (args: string, context) => {
       const parts = args.trim().split(/\s+/).filter(p => p.length > 0);
       const subcommand = parts[0] || "";
@@ -329,11 +329,9 @@ export default function (pi: ExtensionAPI): void {
           "                              Configure Telegram bot",
           "/msg-bridge configure whatsapp",
           "                              Configure WhatsApp (scan QR)",
-          "/msg-bridge add-destination <alias> <transport:chatId|username>",
-          "                              Save or update a destination alias",
-          "/msg-bridge destinations      List saved destinations and known contacts",
-          "/msg-bridge remove-destination <alias>",
-          "                              Remove a destination alias",
+          "/msg-bridge alias <name> [transport:chatId]",
+          "                              Set alias on a contact (by username or transport:chatId)",
+          "/msg-bridge unalias <name>    Remove an alias from a contact",
           "/msg-bridge widget            Toggle status widget on/off",
           "LLM tool: send_remote_message(alias, text) for proactive messaging",
           "",
@@ -492,133 +490,87 @@ export default function (pi: ExtensionAPI): void {
         break;
       }
 
-      case "add-destination": {
-        const alias = parts[1];
-        const destinationInput = parts.slice(2).join(" ").trim();
-        if (!alias || !destinationInput) {
-          context.ui.notify("Usage: /msg-bridge add-destination <alias> <transport:chatId|username>", "error");
+      case "alias": {
+        const aliasName = parts[1];
+        const target = parts.slice(2).join(" ").trim();
+
+        if (!aliasName) {
+          context.ui.notify("Usage: /msg-bridge alias <name> [transport:chatId|username]", "error");
           return;
         }
-        if (!/^[A-Za-z0-9_-]+$/.test(alias)) {
+        if (!/^[A-Za-z0-9_-]+$/.test(aliasName)) {
           context.ui.notify("❌ Alias must use only letters, numbers, underscores, or hyphens", "error");
           return;
         }
-        const configForDestination = loadConfig();
-        let transport: string;
-        let chatId: string;
-        if (destinationInput.includes(":")) {
-          const separatorIndex = destinationInput.indexOf(":");
-          transport = destinationInput.substring(0, separatorIndex).trim();
-          chatId = destinationInput.substring(separatorIndex + 1).trim();
-          if (!transport || !chatId) {
-            context.ui.notify("❌ Destination must be in format <transport:chatId>", "error");
-            return;
+
+        const cfg = loadConfig();
+        const contacts = cfg.knownContacts ?? [];
+
+        // Find the contact to alias
+        let contact;
+        if (target && target.includes(":")) {
+          const sep = target.indexOf(":");
+          const transport = target.substring(0, sep).trim();
+          const chatId = target.substring(sep + 1).trim();
+          contact = contacts.find((c) => c.transport === transport && c.chatId === chatId);
+          if (!contact) {
+            // Create a new contact entry for a transport:chatId we haven't seen yet
+            contact = { transport, chatId, username: aliasName, lastSeen: 0 };
+            contacts.push(contact);
           }
         } else {
-          const knownContacts = configForDestination.knownContacts ?? [];
-          const matches = knownContacts.filter(
-            (contact) => contact.username.toLowerCase() === destinationInput.toLowerCase()
-          );
-          if (matches.length === 0) {
-            if (knownContacts.length === 0) {
-              context.ui.notify(
-                "❌ Contact not found. No known contacts yet. Ask them to message you first, or use <transport:chatId>.",
-                "error"
-              );
-            } else {
-              const knownContactLines = [...knownContacts]
-                .sort((a, b) => b.lastSeen - a.lastSeen)
-                .map(
-                  (contact) =>
-                    `  • ${contact.username} (${contact.transport}:${contact.chatId})`
-                );
-              context.ui.notify(
-                [
-                  `❌ Contact '${destinationInput}' not found. Known contacts:`,
-                  ...knownContactLines,
-                ].join("\n"),
-                "error"
-              );
-            }
-            return;
-          }
-          const mostRecentContact = matches.reduce((latest, current) =>
-            current.lastSeen > latest.lastSeen ? current : latest
-          );
-          transport = mostRecentContact.transport;
-          chatId = mostRecentContact.chatId;
-        }
-        configForDestination.destinations = configForDestination.destinations ?? {};
-        configForDestination.destinations[alias] = {
-          alias,
-          transport,
-          chatId,
-        };
-        saveConfig(configForDestination);
-
-        context.ui.notify(
-          `✅ Saved destination '${alias}' → ${transport}:${chatId}`,
-          "info"
-        );
-        break;
-      }
-      case "destinations": {
-        const configForDestination = loadConfig();
-        const destinations = Object.values(configForDestination.destinations ?? {});
-        const knownContacts = configForDestination.knownContacts ?? [];
-        if (destinations.length === 0 && knownContacts.length === 0) {
-          context.ui.notify("No saved destinations or known contacts yet.", "info");
-          break;
-        }
-
-        const lines = ["━━━ Message Destinations ━━━", ""];
-        if (destinations.length === 0) {
-          lines.push("Saved destinations: (none)");
-        } else {
-          lines.push("Saved destinations:");
-          lines.push(...destinations.map((destination) => `  • ${destination.alias} → ${destination.transport}:${destination.chatId}`));
-        }
-
-        lines.push("");
-
-        if (knownContacts.length === 0) {
-          lines.push("Known contacts: (none)");
-        } else {
-          lines.push("Known contacts:");
-          lines.push(
-            ...[...knownContacts]
-              .sort((a, b) => b.lastSeen - a.lastSeen)
-              .map((contact) => {
-                const username = contact.username || "(unknown)";
-                const lastSeen = new Date(contact.lastSeen).toLocaleString();
-                return `  • ${username} (${contact.transport}:${contact.chatId}) — last seen ${lastSeen}`;
-              })
+          const lookup = target || aliasName;
+          contact = contacts.find(
+            (c) => c.username.toLowerCase() === lookup.toLowerCase()
+                || c.alias?.toLowerCase() === lookup.toLowerCase()
           );
         }
-        lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        context.ui.notify(lines.join("\n"), "info");
-        break;
-      }
-      case "remove-destination": {
-        const alias = parts[1];
-        if (!alias) {
-          context.ui.notify("Usage: /msg-bridge remove-destination <alias>", "error");
+
+        if (!contact) {
+          const list = contacts.length > 0
+            ? contacts.map((c) => `  └─ ${c.username} (${c.transport}:${c.chatId})`).join("\n")
+            : "  (none — send a message from a messenger first)";
+          context.ui.notify(`❌ Contact '${target || aliasName}' not found.\nKnown contacts:\n${list}`, "error");
           return;
         }
 
-        const configForDestination = loadConfig();
-        if (!configForDestination.destinations?.[alias]) {
-          context.ui.notify(`❌ Destination '${alias}' not found`, "error");
-          return;
-        }
-        delete configForDestination.destinations[alias];
-        if (Object.keys(configForDestination.destinations).length === 0) {
-          delete configForDestination.destinations;
-        }
-        saveConfig(configForDestination);
-        context.ui.notify(`🗑️ Removed destination '${alias}'`, "info");
+        contact.alias = aliasName;
+        cfg.knownContacts = contacts;
+        saveConfig(cfg);
+        context.ui.notify(`✅ Alias '${aliasName}' set on ${contact.username} (${contact.transport}:${contact.chatId})`, "info");
         break;
       }
+
+      case "unalias": {
+        const aliasName = parts[1];
+        if (!aliasName) {
+          context.ui.notify("Usage: /msg-bridge unalias <name>", "error");
+          return;
+        }
+        const cfg = loadConfig();
+        const contacts = cfg.knownContacts ?? [];
+        const contact = contacts.find((c) => c.alias === aliasName);
+        if (!contact) {
+          context.ui.notify(`❌ No contact with alias '${aliasName}'`, "error");
+          return;
+        }
+        delete contact.alias;
+        cfg.knownContacts = contacts;
+        saveConfig(cfg);
+        context.ui.notify(`✅ Removed alias '${aliasName}' from ${contact.username}`, "info");
+        break;
+      }
+
+      // Legacy command names for backwards compat
+      case "add-destination":
+        context.ui.notify("Renamed to: /msg-bridge alias <name> [transport:chatId|username]", "info");
+        break;
+      case "remove-destination":
+        context.ui.notify("Renamed to: /msg-bridge unalias <name>", "info");
+        break;
+      case "destinations":
+        context.ui.notify("Merged into: /msg-bridge status", "info");
+        break;
       case "widget": {
         const cfg2 = loadConfig();
         cfg2.showWidget = cfg2.showWidget === false;
@@ -652,32 +604,21 @@ export default function (pi: ExtensionAPI): void {
 
         lines.push("");
         lines.push(`Channels: ${stats.channels}`);
-        // Known contacts
         const cfg = loadConfig();
-        const knownContacts = cfg.knownContacts ?? [];
-        const destinations = Object.values(cfg.destinations ?? {});
+        const contacts = cfg.knownContacts ?? [];
 
         lines.push("");
-        if (destinations.length > 0) {
-          lines.push(`Destinations: ${destinations.length}`);
-          for (const d of destinations) {
-            lines.push(`  └─ ${d.alias} → ${d.transport}:${d.chatId}`);
-          }
-        } else {
-          lines.push("Destinations: (none)");
-        }
-
-        lines.push("");
-        if (knownContacts.length > 0) {
-          const sorted = [...knownContacts].sort((a, b) => b.lastSeen - a.lastSeen);
-          lines.push(`Known Contacts: ${sorted.length}`);
+        if (contacts.length > 0) {
+          const sorted = [...contacts].sort((a, b) => b.lastSeen - a.lastSeen);
+          lines.push(`Contacts: ${sorted.length}`);
           for (const c of sorted) {
             const name = c.username || "(unknown)";
-            const ago = _timeAgo(c.lastSeen);
-            lines.push(`  └─ ${name} (${c.transport}:${c.chatId}) — ${ago}`);
+            const ago = c.lastSeen > 0 ? _timeAgo(c.lastSeen) : "never seen";
+            const aliasTag = c.alias ? ` [alias: ${c.alias}]` : "";
+            lines.push(`  └─ ${name} (${c.transport}:${c.chatId}) — ${ago}${aliasTag}`);
           }
         } else {
-          lines.push("Known Contacts: (none)");
+          lines.push("Contacts: (none)");
         }
         lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
@@ -695,44 +636,37 @@ export default function (pi: ExtensionAPI): void {
     name: "send_remote_message",
     label: "Send Remote Message",
     description:
-      "Send a proactive message to a saved messenger destination. Use /msg-bridge destinations to see available aliases.",
+      "Send a proactive message to a contact by alias or username. Use /msg-bridge status to see contacts.",
     parameters: Type.Object({
-      alias: Type.String({ description: "Saved destination alias" }),
+      alias: Type.String({ description: "Contact alias or username" }),
       text: Type.String({ description: "Message text to send" }),
     }),
     async execute(_toolCallId, params) {
       const config = loadConfig();
-      const alias = params.alias.trim();
-      const destination = config.destinations?.[alias];
-      const availableAliases = Object.keys(config.destinations ?? {}).sort();
+      const lookup = params.alias.trim().toLowerCase();
+      const contacts = config.knownContacts ?? [];
 
-      if (!destination) {
-        const aliasList =
-          availableAliases.length > 0
-            ? availableAliases.join(", ")
-            : "(none configured)";
+      // Find by alias first, then by username
+      const contact = contacts.find((c) => c.alias?.toLowerCase() === lookup)
+                   || contacts.find((c) => c.username.toLowerCase() === lookup);
+
+      if (!contact) {
+        const available = contacts
+          .map((c) => c.alias || c.username)
+          .filter(Boolean)
+          .sort();
+        const list = available.length > 0 ? available.join(", ") : "(none)";
 
         return {
-          content: [
-            {
-              type: "text",
-              text: `❌ Destination alias '${alias}' not found. Available aliases: ${aliasList}`,
-            },
-          ],
+          content: [{ type: "text", text: `❌ Contact '${params.alias}' not found. Available: ${list}` }],
           details: {},
           isError: true,
         };
       }
-
       const messageText = params.text;
       if (!messageText.trim()) {
         return {
-          content: [
-            {
-              type: "text",
-              text: "❌ Message text cannot be empty.",
-            },
-          ],
+          content: [{ type: "text", text: "❌ Message text cannot be empty." }],
           details: {},
           isError: true,
         };
@@ -741,30 +675,18 @@ export default function (pi: ExtensionAPI): void {
       try {
         const chunks = splitMessage(messageText, 4000);
         for (const chunk of chunks) {
-          await transportManager.sendMessage(
-            destination.chatId,
-            destination.transport,
-            chunk
-          );
+          await transportManager.sendMessage(contact.chatId, contact.transport, chunk);
         }
 
+        const label = contact.alias || contact.username;
         return {
-          content: [
-            {
-              type: "text",
-              text: `✅ Sent message to '${destination.alias}' via ${destination.transport}.`,
-            },
-          ],
+          content: [{ type: "text", text: `✅ Sent message to '${label}' via ${contact.transport}.` }],
           details: {},
         };
       } catch (err) {
+        const label = contact.alias || contact.username;
         return {
-          content: [
-            {
-              type: "text",
-              text: `❌ Failed to send message to '${destination.alias}': ${(err as Error).message}`,
-            },
-          ],
+          content: [{ type: "text", text: `❌ Failed to send to '${label}': ${(err as Error).message}` }],
           details: {},
           isError: true,
         };

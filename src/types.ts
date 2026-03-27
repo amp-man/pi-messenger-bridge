@@ -22,19 +22,13 @@ export interface ExternalMessage {
   wasMentioned?: boolean;
 }
 
-/** A saved outbound destination the LLM can send to */
-export interface Destination {
-  alias: string;
-  transport: string;
-  chatId: string;
-}
-
-/** A contact auto-captured from inbound messages */
+/** A contact auto-captured from inbound messages, optionally with a saved alias */
 export interface KnownContact {
   transport: string;
   chatId: string;
   username: string;
   lastSeen: number; // epoch ms
+  alias?: string;   // optional saved nickname for send_remote_message
 }
 
 /**
@@ -62,8 +56,9 @@ export interface MsgBridgeConfig {
   autoConnect?: boolean;
   showWidget?: boolean;
   debug?: boolean;
-  destinations?: Record<string, Destination>; // alias → destination
   knownContacts?: KnownContact[];
+  /** @deprecated — migrated into knownContacts[].alias on load */
+  destinations?: Record<string, { alias: string; transport: string; chatId: string }>;
 }
 
 /**
