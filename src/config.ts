@@ -43,31 +43,6 @@ export function loadConfig(): MsgBridgeConfig {
   if (process.env.PI_DISCORD_TOKEN) {
     config.discord = { token: process.env.PI_DISCORD_TOKEN };
   }
-
-  // Migrate legacy destinations into knownContacts[].alias
-  if (config.destinations && Object.keys(config.destinations).length > 0) {
-    const contacts = config.knownContacts ?? [];
-    for (const dest of Object.values(config.destinations)) {
-      const existing = contacts.find(
-        (c) => c.transport === dest.transport && c.chatId === dest.chatId
-      );
-      if (existing) {
-        existing.alias = dest.alias;
-      } else {
-        contacts.push({
-          transport: dest.transport,
-          chatId: dest.chatId,
-          username: dest.alias,
-          lastSeen: 0,
-          alias: dest.alias,
-        });
-      }
-    }
-    config.knownContacts = contacts;
-    delete config.destinations;
-    // Persist migration
-    try { saveConfig(config); } catch (_e) { /* best-effort */ }
-  }
   return config;
 }
 /**

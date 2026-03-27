@@ -560,17 +560,6 @@ export default function (pi: ExtensionAPI): void {
         context.ui.notify(`✅ Removed alias '${aliasName}' from ${contact.username}`, "info");
         break;
       }
-
-      // Legacy command names for backwards compat
-      case "add-destination":
-        context.ui.notify("Renamed to: /msg-bridge alias <name> [transport:chatId|username]", "info");
-        break;
-      case "remove-destination":
-        context.ui.notify("Renamed to: /msg-bridge unalias <name>", "info");
-        break;
-      case "destinations":
-        context.ui.notify("Merged into: /msg-bridge status", "info");
-        break;
       case "widget": {
         const cfg2 = loadConfig();
         cfg2.showWidget = cfg2.showWidget === false;

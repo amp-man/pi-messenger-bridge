@@ -57,8 +57,6 @@ export interface MsgBridgeConfig {
   showWidget?: boolean;
   debug?: boolean;
   knownContacts?: KnownContact[];
-  /** @deprecated — migrated into knownContacts[].alias on load */
-  destinations?: Record<string, { alias: string; transport: string; chatId: string }>;
 }
 
 /**
