@@ -27,6 +27,18 @@ export default function (pi: ExtensionAPI): void {
   let auth: ChallengeAuth;
   let ctx: ExtensionContext;
 
+  function _timeAgo(epochMs: number): string {
+    const seconds = Math.floor((Date.now() - epochMs) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return new Date(epochMs).toLocaleDateString();
+  }
+
   /**
   /**
    * Update status widget
@@ -640,6 +652,33 @@ export default function (pi: ExtensionAPI): void {
 
         lines.push("");
         lines.push(`Channels: ${stats.channels}`);
+        // Known contacts
+        const cfg = loadConfig();
+        const knownContacts = cfg.knownContacts ?? [];
+        const destinations = Object.values(cfg.destinations ?? {});
+
+        lines.push("");
+        if (destinations.length > 0) {
+          lines.push(`Destinations (${destinations.length}):`);
+          for (const d of destinations) {
+            lines.push(`  📨 ${d.alias} → ${d.transport}:${d.chatId}`);
+          }
+        } else {
+          lines.push("Destinations: (none)");
+        }
+
+        lines.push("");
+        if (knownContacts.length > 0) {
+          const sorted = [...knownContacts].sort((a, b) => b.lastSeen - a.lastSeen);
+          lines.push(`Known Contacts (${sorted.length}):`);
+          for (const c of sorted) {
+            const name = c.username || "(unknown)";
+            const ago = _timeAgo(c.lastSeen);
+            lines.push(`  👤 ${name} (${c.transport}:${c.chatId}) — ${ago}`);
+          }
+        } else {
+          lines.push("Known Contacts: (none — send a message from a messenger to get started)");
+        }
         lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
         context.ui.notify(lines.join("\n"), "info");
