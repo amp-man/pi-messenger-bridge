@@ -659,9 +659,9 @@ export default function (pi: ExtensionAPI): void {
 
         lines.push("");
         if (destinations.length > 0) {
-          lines.push(`Destinations (${destinations.length}):`);
+          lines.push(`Destinations: ${destinations.length}`);
           for (const d of destinations) {
-            lines.push(`  📨 ${d.alias} → ${d.transport}:${d.chatId}`);
+            lines.push(`  └─ ${d.alias} → ${d.transport}:${d.chatId}`);
           }
         } else {
           lines.push("Destinations: (none)");
@@ -670,14 +670,14 @@ export default function (pi: ExtensionAPI): void {
         lines.push("");
         if (knownContacts.length > 0) {
           const sorted = [...knownContacts].sort((a, b) => b.lastSeen - a.lastSeen);
-          lines.push(`Known Contacts (${sorted.length}):`);
+          lines.push(`Known Contacts: ${sorted.length}`);
           for (const c of sorted) {
             const name = c.username || "(unknown)";
             const ago = _timeAgo(c.lastSeen);
-            lines.push(`  👤 ${name} (${c.transport}:${c.chatId}) — ${ago}`);
+            lines.push(`  └─ ${name} (${c.transport}:${c.chatId}) — ${ago}`);
           }
         } else {
-          lines.push("Known Contacts: (none — send a message from a messenger to get started)");
+          lines.push("Known Contacts: (none)");
         }
         lines.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
